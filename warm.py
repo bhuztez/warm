@@ -113,7 +113,7 @@ class RecordSet(type):
 
         records = [self._indices[c].get(v, None) for c, v in unique_cols]
 
-        if all(record==new_record for record in records):
+        if records and all(record==new_record for record in records):
             return records[0]
 
         assert all(record is None for record in records)
@@ -148,6 +148,40 @@ class Rows(object):
                 for c in col:
                     record_sets |= {c._set}
                     column_indices[c] = i
+
+        self._column_maps = []
+
+        for s in record_sets:
+            indices = tuple(column_indices[c] for c in s._columns)
+            self._column_maps += [(s, indices)]
+
+
+    def append(self, obj):
+        for record_set, column_map in self._column_maps:
+            record_set(obj[index] for index in column_map)
+
+
+    def extend(self, iterable):
+        for t in iterable:
+            self.append(t)
+
+
+
+class DictRows(object):
+
+
+    def __init__(self, **columns):
+        record_sets = set()
+        column_indices = {}
+
+        for key, col in columns.items():
+            if isinstance(col, Column):
+                record_sets |= {col._set}
+                column_indices[col] = key
+            elif isinstance(col, ColumnSet):
+                for c in col:
+                    record_sets |= {c._set}
+                    column_indices[c] = key
 
         self._column_maps = []
 
